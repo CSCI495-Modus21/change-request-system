@@ -4,17 +4,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
 import re
+import requests
 
-# Set Matplotlib backend to 'agg' before any plotting
+
 matplotlib.use('agg')
-
-# Initialize Panel extension with dark theme
 pn.extension(theme="dark")
 
-# Global variable to store the last DataFrame
 last_df = None
 
-# Simulated database of change requests
 SIMULATED_DATA = [
     {
         "project_name": "Alpha",
@@ -45,32 +42,25 @@ SIMULATED_DATA = [
     }
 ]
 
+
 def parse_query(message):
-    """Parse the user's natural language query to extract parameters for the database API."""
-    params = {}
-    message = message.lower()
-    
-    if 'project' in message:
-        match = re.search(r'project\s+(\w+)', message)
-        if match:
-            params['project_name'] = match.group(1)
-    
-    if 'by' in message:
-        match = re.search(r'by\s+(\w+\s+\w+)', message)
-        if match:
-            params['requested_by'] = match.group(1)
-    
-    if 'after' in message:
-        match = re.search(r'after\s+(\d{4}-\d{2}-\d{2})', message)
-        if match:
-            params['date_of_request__gte'] = match.group(1)
-    
-    if 'before' in message:
-        match = re.search(r'before\s+(\d{4}-\d{2}-\d{2})', message)
-        if match:
-            params['date_of_request__lte'] = match.group(1)
-    
-    return params
+    """Parse the user's natural language query using a cloud-based Llama 3 API."""
+    external_api_url = "https://api.example.com/llama3/generate"  # Replace with actual API URL
+    payload = {
+        "prompt": f"Extract query parameters from this: '{message}'. Return a JSON with fields like project_name, requested_by, date_of_request__gte, date_of_request__lte.",
+        "max_tokens": 100
+    }
+    try:
+        response = requests.post(external_api_url, json=payload, headers={"Authorization": "Bearer 4a44a1a6-98a1-4c2c-b010-068703951eed"})
+        if response.status_code == 200:
+            params = response.json().get("response", {})
+            return params if isinstance(params, dict) else {}
+        else:
+            print(f"API Error: {response.text}")
+            return {}
+    except Exception as e:
+        print(f"Error calling Llama 3 API: {str(e)}")
+        return {}
 
 def filter_simulated_data(params):
     """Filter the simulated data based on query parameters."""
@@ -128,7 +118,6 @@ def query_callback(contents, user, instance):
     message = contents.strip().lower()
     
     if message == "test me!":
-        # Use all simulated data for "Test me!"
         df = pd.DataFrame(SIMULATED_DATA)
         last_df = df
         instance.send("Here's some simulated test data:")
@@ -168,20 +157,16 @@ def query_callback(contents, user, instance):
     else:
         instance.send("I didn’t understand that. Try asking for change requests (e.g., 'Show me change requests for project Alpha') or a plot.")
 
-# Create the chat interface
 chat_interface = ChatInterface(callback=query_callback)
 
-# Customize the input widget's placeholder
 chat_interface.placeholder = "Type your query here (e.g., 'Show me change requests for project Alpha' or 'Test me!')"
 
-# Add a welcome message
 chat_interface.send(
     "Hi! I’m here to help you query change requests. Type 'Test me!' for a demo with simulated data and a plot, or use a natural language query like 'Show me all change requests for project Alpha' or 'List change requests by John Doe after 2023-01-01'. Once you see results, you can request a plot, like 'plot change requests per project'. What would you like to do?",
     user="System",
     respond=False
 )
 
-# Define the layout
 layout = pn.Column(
     pn.pane.Markdown("# Change Request Database Query"),
     chat_interface
