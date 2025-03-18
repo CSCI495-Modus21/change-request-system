@@ -6,11 +6,14 @@ import requests
 import os
 import re
 import json
+from dotenv import load_dotenv
 
+load_dotenv()
 app = FastAPI()
 
-HF_API_URL = "https://api-inference.huggingface.co/models/meta-llama/Meta-Llama-3-8B-Instruct"
+HF_API_URL = "https://api-inference.huggingface.co/models/google/flan-t5-base"
 HF_API_TOKEN = os.getenv("HUGGING_FACE_TOKEN")
+print(f"HF_API_TOKEN: {HF_API_TOKEN}")
 
 if not HF_API_TOKEN:
     raise ValueError("Hugging Face API token not found. Please set the HF_API_TOKEN environment variable.")
@@ -67,25 +70,39 @@ create_table()
 def query_hf_api(prompt: str) -> str:
     """Send a prompt to the Hugging Face Inference API and return the response."""
     headers = {
-        "Authorization": f"Bearer {HF_API_TOKEN}",
+        "Authorization": f"Bearer {HF_API_TOKEN}",  # Ensure HF_API_TOKEN is set
         "Content-Type": "application/json"
     }
+    # Format the prompt for categorization
+    full_prompt = (
+        f"Categorize the following change request description into one of these categories: "
+        f"hardware issue, software issue, personnel issue, or other. Return only the category name.\n\n"
+        f"Description: {prompt}\n\nCategory:"
+    )
     payload = {
-        "inputs": prompt,
-        "parameters": {"max_new_tokens": 50, "temperature": 0.1}
+        "inputs": full_prompt,
+        "parameters": {"max_length": 50}  # Use max_length for T5 models
     }
     response = requests.post(HF_API_URL, headers=headers, json=payload)
     if response.status_code != 200:
         raise HTTPException(status_code=500, detail=f"Hugging Face API error: {response.text}")
-    return response.json()[0]["generated_text"]
+    # Extract the generated text (T5 output format)
+    return response.json()[0]["generated_text"].strip()
 
 @app.post("/change_requests")
 def create_change_request(change_request: ChangeRequest):
     """Create a new change request and categorize it."""
     prompt = (f"Categorize the following change request description into one of these categories: "
-              f"hardware issue, software issue, personnel issue, or other.\n\n"
+              f"hardware issue, software issue, personnel issue, or other. Return only the category name.\n\n"
               f"Description: {change_request.description}\n\nCategory:")
-    category = query_hf_api(prompt).lower()
+    
+    raw_response = query_hf_api(prompt).lower().strip()
+    response_lines = raw_response.split('\n')
+    category = response_lines[-1].strip()
+    
+    valid_categories = {"hardware issue", "software issue", "personnel issue", "other"}
+    if category not in valid_categories:
+        category = "other" 
 
     cost_items_json = json.dumps(change_request.cost_items)
 
