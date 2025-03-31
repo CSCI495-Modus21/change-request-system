@@ -4,7 +4,7 @@ import random
 
 pn.extension(theme="dark", notifications=True)
 
-database_api_url = "http://127.0.0.1:8000/change_requests"
+change_request_api_url = "http://127.0.0.1:8000/change_requests"
 
 def generate_cr_num():
     return f"CR-{random.randint(1000, 2000)}"
@@ -79,7 +79,7 @@ def on_submit_click(event):
             }
             change_request_data["cost_items"].append(cost_item)
 
-        response = requests.post(database_api_url, json=change_request_data)
+        response = requests.post(change_request_api_url, json=change_request_data)
         if response.status_code == 200:
             pn.state.notifications.success("Change request submitted successfully.")
         else:

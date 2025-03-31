@@ -1,54 +1,60 @@
 import panel as pn
-from panel.chat import ChatInterface
-import pandas as pd
-import requests
+import os
+from dotenv import load_dotenv
+from transformers import AutoTokenizer, AutoModelForCausalLM
+import torch
 
-pn.extension(theme="dark", callback_exception='verbose')
+load_dotenv()
+HF_TOKEN = os.getenv("HUGGING_FACE_TOKEN")
+print("HF_TOKEN:", HF_TOKEN)
+if not HF_TOKEN:
+    raise ValueError("HF_TOKEN not found in .env file")
 
-def query_database(query_text):
-    """Send a natural language query to the API and return the response."""
-    url = "http://127.0.0.1:8000/query"
-    try:
-        response = requests.post(url, json={"query_text": query_text})
-        if response.status_code == 200:
-            return response.json()
-        else:
-            return {"error": f"API error: {response.text}"}
-    except requests.RequestException as e:
-        return {"error": f"Network error: {str(e)}"}
+try:
+    tokenizer = AutoTokenizer.from_pretrained("defog/sqlcoder-7b-2", token=HF_TOKEN) # initialize the sqlcoder-7b-2 model and tokenizer
+    model = AutoModelForCausalLM.from_pretrained("defog/sqlcoder-7b-2", token=HF_TOKEN)
+except Exception as e:
+    print(f"Error loading model: {e}")
+    raise
 
-def query_callback(contents, user, instance):
-    """Handle user input and display query results in the chat."""
-    if not contents.strip():
-        return
+
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu") # check if GPU is available
+model = model.to(device)
+
+def get_response(contents, user, instance):
+    prompt = contents if isinstance(contents, str) else " ".join(str(msg) for msg in contents)
     
-    result = query_database(contents)
+    sql_prompt = f"Translate this to SQL: {prompt}"
+    inputs = tokenizer(sql_prompt, return_tensors="pt", max_length=512, truncation=True)
+    inputs = inputs.to(device)
     
-    if "error" in result:
-        instance.send(f"Error: {result['error']}")
-    elif "count" in result:
-        instance.send(f"Count: {result['count']}")
-    elif "results" in result:
-        if result["results"]:
-            df = pd.DataFrame(result["results"])
-            instance.send(df)
-        else:
-            instance.send("No results found.")
+    outputs = model.generate(
+        **inputs,
+        max_new_tokens=200,  
+        do_sample=False,    
+        temperature=0.1,     
+        pad_token_id=tokenizer.eos_token_id
+    )
+    
+    response = tokenizer.decode(outputs[0], skip_special_tokens=True)
+    return response
 
-chat_interface = ChatInterface(callback=query_callback)
-chat_interface.placeholder = "Type your query (e.g., 'How many hardware issues?' or 'List change requests for project Alpha')"
-
-chat_interface.send(
-    "Hi! I can help you query the change request database. Try something like 'How many hardware issues?' or 'List change requests for project Alpha'. What would you like to know?",
-    user="System",
-    respond=False
+chat_interface = pn.chat.ChatInterface(
+    callback=get_response,
+    user="You",
+    show_clear=False,
+    show_undo=False,
+    width=600,
+    height=400,
+    placeholder_text="Enter a natural language query (e.g., 'Show me all employees with salary above 50000')",
+    name="SQLCoder Chat"
 )
 
-layout = pn.Column(
-    pn.pane.Markdown("# Change Request Database Query"),
-    chat_interface
+app = pn.Column(
+    "# Natural Language to SQL Chat Interface",
+    chat_interface,
+    sizing_mode="stretch_width"
 )
 
-def get_database_query_layout():
-    """Return the layout for use in main.py."""
-    return layout
+pn.extension()
+app.servable()
