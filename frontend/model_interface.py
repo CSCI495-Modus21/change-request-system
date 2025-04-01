@@ -11,7 +11,7 @@ load_dotenv()
 HF_TOKEN = os.getenv("HUGGING_FACE_TOKEN")
 
 model_name = "google/tapas-base-finetuned-wtq"
-tokenizer = TapasTokenizer.from_pretrained(model_name)  # No token needed for public model
+tokenizer = TapasTokenizer.from_pretrained(model_name)                     
 model = TapasForQuestionAnswering.from_pretrained(model_name)
 
 conn = sqlite3.connect('../backend/database/change_requests.db')
@@ -32,22 +32,22 @@ def format_answer(query, answer_coordinates, aggregation_labels, table):
     if not answer_coordinates:
         return "No answer found."
     
-    coordinates = answer_coordinates[0]  # e.g., [(0, 2), (1, 2)]
+    coordinates = answer_coordinates[0]  # e.g., [(0, 2), (1, 2)]  
     agg_label = aggregation_labels[0]    # e.g., 3
     
     if "how many" in query.lower():
         unique_rows = set(row for row, _ in coordinates)
         return f"There are {len(unique_rows)} items."
-    elif agg_label == 0:  # NONE
+    elif agg_label == 0:  
         values = [table.iloc[row, col] for row, col in coordinates]
         return ", ".join(values)
-    elif agg_label == 1:  # SUM
+    elif agg_label == 1:  
         values = [float(table.iloc[row, col]) for row, col in coordinates]
         return str(sum(values))
-    elif agg_label == 2:  # COUNT
+    elif agg_label == 2:
         unique_rows = set(row for row, _ in coordinates)
         return str(len(unique_rows))
-    elif agg_label == 3:  # AVERAGE
+    elif agg_label == 3:  
         values = [float(table.iloc[row, col]) for row, col in coordinates]
         return str(sum(values) / len(values) if values else 0)
     else:

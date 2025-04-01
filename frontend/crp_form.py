@@ -32,7 +32,7 @@ def add_cost_item():
         pn.Spacer(height=25)
     )
     cost_items_column.append(cost_item_row)
-    return cost_item_row  # Return for initial setup
+    return cost_item_row
 
 add_cost_item_button = pn.widgets.Button(name="Add Cost Item", button_type="primary")
 add_cost_item_button.on_click(lambda event: add_cost_item())
@@ -58,12 +58,26 @@ def reset_form():
     change_name.value = ""
     description.value = ""
     reason.value = ""
-    cost_items_column.clear()  # Clear all cost items
-    add_cost_item()  # Add one fresh cost item row
+    cost_items_column.clear()
+    add_cost_item()
 
 def on_submit_click(event):
     submit_button.loading = True
     try:
+        required_fields = {
+            "Project Name": project_name.value,
+            "Requested By": requested_by.value,
+            "Date of Request": date_of_request.value,
+            "Description of Change": description.value
+        }
+        
+        missing_fields = [name for name, value in required_fields.items() if not value]
+        if missing_fields:
+            error_message = f"Please fill in the following required fields: {', '.join(missing_fields)}"
+            pn.state.notifications.error(error_message)
+            submit_button.loading = False
+            return 
+
         change_request_data = {
             "project_name": project_name.value,
             "change_number": change_number.value,
