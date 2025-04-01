@@ -122,6 +122,7 @@ def generate_plot(df, plot_type):
     
     return None
 
+
 def query_callback(contents, user, instance):
     """Handle user messages: process queries, return results, and manage plot requests."""
     global last_df
@@ -134,7 +135,7 @@ def query_callback(contents, user, instance):
         instance.send("Here's some simulated test data:")
         instance.send(df)
         fig = generate_plot(df, 'Change Requests per Project')
-        instance.send(fig)
+        plot_area.object = fig
         return
     
     if re.search(r'\b(show|list|find|get)\b', message) and 'change request' in message:
@@ -155,12 +156,12 @@ def query_callback(contents, user, instance):
             if plot_type:
                 fig = generate_plot(df, plot_type)
                 if fig:
-                    instance.send(fig)
+                    plot_area.object = fig
                 else:
                     instance.send("Sorry, I couldn’t generate that plot type.")
             else:
                 fig = generate_plot(df, 'Change Requests per Project')
-                instance.send(fig)
+                plot_area.object = fig
         else:
             instance.send("Please run a query first so I have some data to plot!")
         return
@@ -168,23 +169,28 @@ def query_callback(contents, user, instance):
     else:
         instance.send("I didn’t understand that. Try asking for change requests (e.g., 'Show me change requests for project Alpha') or a plot.")
 
-# Create the chat interface
+# create the chat interface
 chat_interface = ChatInterface(callback=query_callback)
 
-# Customize the input widget's placeholder
+# customize the input widget's placeholder
 chat_interface.placeholder = "Type your query here (e.g., 'Show me change requests for project Alpha' or 'Test me!')"
 
-# Add a welcome message
+# welcome message
 chat_interface.send(
     "Hi! I’m here to help you query change requests. Type 'Test me!' for a demo with simulated data and a plot, or use a natural language query like 'Show me all change requests for project Alpha' or 'List change requests by John Doe after 2023-01-01'. Once you see results, you can request a plot, like 'plot change requests per project'. What would you like to do?",
     user="System",
     respond=False
 )
 
-# Define the layout
-layout = pn.Column(
-    pn.pane.Markdown("# Change Request Database Query"),
-    chat_interface
+plot_area = pn.pane.Matplotlib()  # This will display the plot in this area
+
+# Update the layout to include both chat and plot areas
+layout = pn.Row(
+    pn.Column(
+        pn.pane.Markdown("# Change Request Database Query"),
+        chat_interface  # Chat interface on the left
+    ),
+    plot_area  # Plot area on the right
 )
 
 def get_database_query_layout():
