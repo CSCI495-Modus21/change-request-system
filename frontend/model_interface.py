@@ -5,6 +5,8 @@ from dotenv import load_dotenv
 import os
 import panel as pn
 
+pn.extension(theme="dark", notifications=True)
+
 load_dotenv()
 HF_TOKEN = os.getenv("HUGGING_FACE_TOKEN")
 
