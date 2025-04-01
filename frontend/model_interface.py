@@ -8,7 +8,6 @@ import re
 
 # Load environment variables
 load_dotenv()
-# HF_TOKEN = "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"
 HF_TOKEN = os.getenv("HUGGING_FACE_TOKEN")
 print("HF_TOKEN:", HF_TOKEN)
 if not HF_TOKEN:
