@@ -1,27 +1,25 @@
 import panel as pn
 from crp_form import get_form_submission_layout
 from llama3_interface import get_database_query_layout
+from theme_manager import theme_manager
 
-# Initialize Panel with material design
-pn.extension('material')
+# Initialize Panel
+pn.extension()
 
-# Set up the template first so we can reference it
-template = pn.template.MaterialTemplate(
-    title="Change Request Dashboard",
-    header_background="#1976D2",
+# Set initial theme
+pn.state.theme = theme_manager.get_theme()
+
+# Get the theme toggle from the theme manager
+theme_toggle = theme_manager.get_toggle_widget()
+
+# Create the header
+header = pn.Row(
+    pn.pane.Markdown("# Change Request Dashboard", styles={'color': '#1976D2'}),
+    theme_toggle,
+    styles={'background': '#f8f9fa', 'padding': '10px'}
 )
 
-# Create a theme toggle button
-theme_toggle = pn.widgets.Switch(name='Dark Mode', value=True, width=100)
-
-def toggle_theme(event):
-    template.theme = "dark" if event.new else "light"
-    # Force refresh all components
-    if hasattr(pn.state, 'cache'):
-        pn.state.cache.clear()
-
-theme_toggle.param.watch(toggle_theme, 'value')
-
+# Create tabs
 form_submission_tab = get_form_submission_layout()
 database_query_tab = get_database_query_layout()
 
@@ -30,12 +28,13 @@ tabs = pn.Tabs(
     ("Database Query", database_query_tab)
 )
 
-# Add components to template
-template.header.append(theme_toggle)
-template.main.append(tabs)
+# Create main layout
+layout = pn.Column(
+    header,
+    tabs,
+    sizing_mode='stretch_width'
+)
 
-# Set initial theme
-template.theme = "dark"
-
+# Show the application
 if __name__ == "__main__":
-    template.show()
+    layout.show()

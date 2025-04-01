@@ -3,9 +3,10 @@ import pandas as pd
 import requests
 from io import BytesIO
 import random
+from theme_manager import theme_manager
 
-# Initialize Panel with a default theme
-pn.extension(theme='light')
+# Initialize Panel
+pn.extension()
 
 database_api_url = "http://localhost:8000/api/change_requests/"
 

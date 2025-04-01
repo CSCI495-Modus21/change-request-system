@@ -4,6 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib
 import re
+from theme_manager import theme_manager
 
 # Set Matplotlib backend to 'agg' before any plotting
 matplotlib.use('agg')
@@ -11,12 +12,16 @@ matplotlib.use('agg')
 # Initialize Panel extension
 pn.extension()
 
-def update_plot_style(theme='dark'):
+def update_plot_style():
     """Update plot style based on current theme"""
-    if theme == "dark":
+    current_theme = theme_manager.get_theme()
+    if current_theme == "dark":
         plt.style.use('dark_background')
     else:
         plt.style.use('default')
+
+# Register the plot style update function with the theme manager
+theme_manager.register_callback(lambda theme: update_plot_style())
 
 # Global variable to store the last DataFrame
 last_df = None
@@ -105,9 +110,7 @@ def extract_plot_type(message):
 
 def generate_plot(df, plot_type):
     """Generate a Matplotlib plot based on the dataframe and requested plot type."""
-    # Get current theme from the template if available
-    current_theme = getattr(pn.state.template, 'theme', 'dark')
-    update_plot_style(current_theme)
+    update_plot_style()
     
     if plot_type == 'Change Requests per Project':
         plot_df = df['project_name'].value_counts()
