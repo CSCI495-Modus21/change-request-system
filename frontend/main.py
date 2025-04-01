@@ -1,11 +1,11 @@
 import panel as pn
-from crp_form import get_form_submission_layout
-from frontend.model_interface import get_database_query_layout
+import crp_form
+import model_interface
 
 pn.extension(theme="dark")
 
-form_submission_tab = get_form_submission_layout()
-database_query_tab = get_database_query_layout()
+form_submission_tab = crp_form.get_layout()
+database_query_tab = model_interface.get_layout()
 
 tabs = pn.Tabs(
     ("Form Submission", form_submission_tab),
