@@ -1,6 +1,6 @@
 import panel as pn
 from crp_form import get_form_submission_layout
-from llama3_interface import get_database_query_layout
+from frontend.model_interface import get_database_query_layout
 
 pn.extension(theme="dark")
 
