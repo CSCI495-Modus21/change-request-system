@@ -5,11 +5,11 @@ from sqlite3 import Error
 import json
 from dotenv import load_dotenv
 import os
-from transformers import pipeline
+import requests
 
 load_dotenv()
 app = FastAPI()
-classifier = pipeline("zero-shot-classification", model="facebook/bart-large-mnli", token=os.getenv("HUGGING_FACE_TOKEN"))
+TOGETHER_API_KEY = os.getenv("TOGETHER_API_KEY")
 
 class ChangeRequest(BaseModel):
     project_name: str
@@ -58,16 +58,47 @@ def create_table():
 create_table()
 
 def categorize_description(description: str) -> str:
-    """Categorize the description using BART-MNLI for zero-shot classification."""
+    """Categorize the description using Together AI API."""
     categories = ["hardware issue", "software issue", "personnel issue", "other"]
-    result = classifier(description, candidate_labels=categories)
-    category = result["labels"][0]  # The highest-scoring label
-    score = result["scores"][0]     # Confidence score for the top label
+    prompt = (
+        f"Classify the following description the best that you can. Here are some example categories: "
+        f"hardware issue, software issue, personnel issue, other. "
+        f"You are not limited to the list. "
+        f"Description: {description} Category:"
+    )
     
-    print(f"Description: '{description}'")
-    print(f"Predicted Category: '{category}' with score: {score}")
-    
-    return category
+    try:
+        response = requests.post(
+            "https://api.together.xyz/v1/completions",
+            headers={
+                "Authorization": f"Bearer {TOGETHER_API_KEY}",
+                "Content-Type": "application/json"
+            },
+            json={
+                "model": "meta-llama/Llama-3.3-70B-Instruct-Turbo-Free",
+                "prompt": prompt,
+                "max_tokens": 10,
+                "temperature": 0.0,
+                "stop": ["\n"]
+            }
+        )
+        response.raise_for_status()
+        result = response.json()
+        generated_text = result.get("choices", [{}])[0].get("text", "").strip().lower()
+        
+        for category in categories:
+            if category in generated_text:
+                print(f"Description: '{description}'")
+                print(f"Predicted Category: '{category}'")
+                return category
+        print(f"Description: '{description}'")
+        print(f"Predicted Category: 'other' (no match found)")
+        return "other"
+    except requests.RequestException as e:
+        print(f"API error: {e}")
+        print(f"Description: '{description}'")
+        print(f"Predicted Category: 'other' (API error)")
+        return "other"
 
 @app.post("/change_requests")
 def create_change_request(change_request: ChangeRequest):
